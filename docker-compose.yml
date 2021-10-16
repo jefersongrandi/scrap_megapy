@@ -1,0 +1,15 @@
+version: '3'
+services:
+  web:
+    container_name: scrap_py
+    build: .
+    environment:
+      # PODE ser prod ou dev, por default assume prod
+      - TIPO_AMBIENTE=dev
+    volumes:
+      - .:/home/user
+    working_dir: /home/user
+    #command: 'npm run build'
+    restart: on-failure
+    ports:
+      - 5000:5000
