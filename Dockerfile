@@ -16,13 +16,32 @@ RUN apt update -y && apt upgrade -y && apt install curl -y
 
 #Dependências do sistema
 RUN apt-get update -y
-RUN apt-get install -y python3-dev python3-pip build-essential
+#RUN apt-get install -y python3-dev python3-pip build-essential
+
+#instalar pacotes novos do add-apt-repository
+RUN apt update -y && apt-get install -y python-software-properties -y
+RUN apt-get install software-properties-common -y
 
 #Ajustar o pip do Python
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.5 1
 RUN curl -O https://bootstrap.pypa.io/pip/3.5/get-pip.py
 RUN python get-pip.py
 RUN python -m pip install --upgrade "pip < 21.0"
+
+#instalar python 3.8
+RUN add-apt-repository ppa:deadsnakes/ppa -y
+RUN apt update && apt install python3.8 -y
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 2
+RUN update-alternatives --config python
+
+#instalar pip3
+RUN apt-get install python3-pip -y
+RUN apt-get install python3.8-distutils -y
+RUN python3 get-pip.py --force-reinstall
+
+#instalar Firefox
+RUN apt-get update
+RUN apt install firefox -y
 
 #copiar arquivo para container e dar permissão
 COPY start.sh /start.sh
@@ -32,8 +51,9 @@ RUN chmod +x /start.sh
 RUN mkdir -p /home/user
 WORKDIR /home/user
 COPY requirements.txt /home/user/requirements.txt
+COPY geckodriver /home/user/geckodriver
 
-RUN pip install -r requirements.txt
+RUN pip3 install -r requirements.txt
 
 EXPOSE 5000
 
