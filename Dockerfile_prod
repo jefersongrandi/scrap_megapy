@@ -53,7 +53,7 @@ WORKDIR /home/user
 
 #copiar arquivos pro container
 COPY requirements.txt /home/user/requirements.txt
-COPY -R src /home/user/
+ADD src /home/user/src
 COPY .flaskenv /home/user/.flaskenv
 COPY api.py /home/user/api.py
 COPY geckodriver /home/user/geckodriver
