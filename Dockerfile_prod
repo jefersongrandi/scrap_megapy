@@ -52,14 +52,17 @@ RUN mkdir -p /home/user
 WORKDIR /home/user
 
 #copiar arquivos pro container
-COPY requirements.txt /home/user/requirements.txt
-ADD src /home/user/src
-COPY .flaskenv /home/user/.flaskenv
-COPY api.py /home/user/api.py
-COPY geckodriver /home/user/geckodriver
+#COPY requirements.txt /home/user/requirements.txt
+#ADD src /home/user/src
+#COPY .flaskenv /home/user/.flaskenv
+#COPY api.py /home/user/api.py
+#COPY geckodriver /home/user/geckodriver
+COPY . /home/user/
 
 RUN pip3 install -r requirements.txt
 
 EXPOSE 5000
+EXPOSE 80
+EXPOSE 8083
 
 CMD ["/start.sh"]

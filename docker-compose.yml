@@ -6,6 +6,7 @@ services:
     environment:
       # PODE ser prod ou dev, por default assume prod
       - TIPO_AMBIENTE=dev
+      - PORT=5000
     volumes:
       - .:/home/user
     working_dir: /home/user
