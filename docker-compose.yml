@@ -13,4 +13,4 @@ services:
     #command: 'npm run build'
     restart: on-failure
     ports:
-      - 5000:5000
+      - 5001:5000

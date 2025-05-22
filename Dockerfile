@@ -9,51 +9,43 @@
 
 #EXPOSE 5000
 
-FROM ubuntu:16.04
+FROM ubuntu:20.04
 
-#Instalar o Curl
-RUN apt update -y && apt upgrade -y && apt install curl -y
+# Evitar prompts interativos durante a instalação
+ENV DEBIAN_FRONTEND=noninteractive
 
-#Dependências do sistema
-RUN apt-get update -y
-#RUN apt-get install -y python3-dev python3-pip build-essential
+# Atualizar e instalar dependências básicas
+RUN apt-get update && apt-get install -y \
+    curl \
+    python3.8 \
+    python3-pip \
+    python3.8-distutils \
+    firefox \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-#instalar pacotes novos do add-apt-repository
-RUN apt update -y && apt-get install -y python-software-properties -y
-RUN apt-get install software-properties-common -y
+# Definir Python 3.8 como padrão
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1 \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3.8 1
 
-#Ajustar o pip do Python
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.5 1
-RUN curl -O https://bootstrap.pypa.io/pip/3.5/get-pip.py
-RUN python get-pip.py
-RUN python -m pip install --upgrade "pip < 21.0"
-
-#instalar python 3.8
-RUN add-apt-repository ppa:deadsnakes/ppa -y
-RUN apt update && apt install python3.8 -y
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 2
-RUN update-alternatives --config python
-
-#instalar pip3
-RUN apt-get install python3-pip -y
-RUN apt-get install python3.8-distutils -y
-RUN python3 get-pip.py --force-reinstall
-
-#instalar Firefox
-RUN apt-get update
-RUN apt install firefox -y
-
-#copiar arquivo para container e dar permissão
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
-
-#criar diretório para colocar arquivos api
-RUN mkdir -p /home/user
+# Criar diretório para a aplicação
 WORKDIR /home/user
+
+# Copiar arquivos necessários
 COPY requirements.txt /home/user/requirements.txt
 COPY geckodriver /home/user/geckodriver
+COPY start.sh /start.sh
 
-RUN pip3 install -r requirements.txt
+# Configurar permissões
+RUN chmod +x /start.sh \
+    && chmod +x /home/user/geckodriver
+
+# Instalar dependências Python
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# Configurar variáveis de ambiente para o Flask
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
 
 EXPOSE 5000
 
