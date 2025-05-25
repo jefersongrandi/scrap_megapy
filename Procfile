@@ -1,1 +1,0 @@
-web: gunicorn main:api 0.0.0.0:$PORT

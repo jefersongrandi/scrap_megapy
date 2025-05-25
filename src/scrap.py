@@ -20,8 +20,8 @@ def getResultMegasenaScrapping():
 
     service = Service(executable_path=geck)
     option = Options()
-    option.headless = True
-    driver = webdriver.Firefox(service=service, options=option) #option=option
+    option.add_argument('--headless')
+    driver = webdriver.Firefox(service=service, options=option)
     driver.implicitly_wait(10)
     driver.get(url)
 
@@ -66,6 +66,7 @@ def getResultMegasenaScrapping():
         return {'sorteio': NumConc, 'data': DataConc, 'numeros': sorteados}
 
     except TimeoutException:
+        driver.quit()
         return {'sorteio': '', 'data': '', 'numeros': [], 'excepction': 'Timeout load page Firefox'}
 
 

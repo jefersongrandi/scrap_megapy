@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  firebase-deploy:
+    build:
+      context: ..
+      dockerfile: docker-config/Dockerfile.firebase
+    container_name: scrap_megapy_firebase_deploy
+    working_dir: /app
+    volumes:
+      - ..:/app
+      - ../serviceAccountKey.json:/app/serviceAccountKey.json:ro
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/serviceAccountKey.json
+      - GOOGLE_CLOUD_PROJECT=mega-sena-40cff
+      - TIPO_AMBIENTE=prod
+      - FIREBASE_USE_REAL=true
+      - MOZ_HEADLESS=1
+    command: >
+      bash -c "
+        cd /app &&
+        if [ -d 'functions/src' ]; then
+          rm -rf functions/src;
+        fi &&
+        mkdir -p functions/src &&
+        cp -r src/* functions/src/ &&
+        cd functions &&
+        pip install -r requirements.txt &&
+        firebase use mega-sena-40cff --non-interactive &&
+        firebase deploy --non-interactive
+      "
+    stdin_open: true
+    tty: true

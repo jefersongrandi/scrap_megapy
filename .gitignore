@@ -1,4 +1,48 @@
-venv/
+# Python
 __pycache__/
-get-pip.py
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+.env
+
+# Firebase
+serviceAccountKey.json
+firebase-debug.log
+.firebase/
+.runtimeconfig.json
+
+# Node.js
+node_modules/
+npm-debug.log
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Arquivos de sistema
 *.log
+functions/lib/
+functions/src/

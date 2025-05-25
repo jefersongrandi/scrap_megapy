@@ -1,0 +1,53 @@
+FROM python:3.10-slim
+
+# Configuração de ambiente
+ENV PYTHONUNBUFFERED 1
+ENV PORT 8080
+
+# Instalar dependências do sistema
+RUN apt-get update && apt-get install -y \
+    firefox-esr \
+    curl \
+    wget \
+    unzip \
+    gnupg \
+    lsb-release \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Criar diretório da aplicação
+WORKDIR /app
+
+# Instalar Node.js v20.x (LTS) e npm para o Firebase CLI
+RUN apt-get update && \
+    apt-get install -y ca-certificates gnupg && \
+    mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
+    apt-get update && \
+    apt-get install -y nodejs && \
+    npm install -g firebase-tools && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Verificar versões
+RUN node --version && npm --version && firebase --version
+
+# Copiar o código-fonte
+COPY . /app/
+
+# Instalar o geckodriver para o Selenium
+COPY geckodriver /usr/local/bin/geckodriver
+RUN chmod +x /usr/local/bin/geckodriver
+
+# Copiar o script de deploy e dar permissão de execução
+COPY docker-config/deploy.sh /app/
+RUN chmod +x /app/deploy.sh
+
+# Configurar variáveis de ambiente
+ENV PYTHONPATH=/app
+ENV GOOGLE_APPLICATION_CREDENTIALS=/app/serviceAccountKey.json
+ENV GOOGLE_CLOUD_PROJECT=mega-sena-40cff
+ENV MOZ_HEADLESS=1
+
+# Comando padrão ao iniciar o contêiner
+CMD ["/app/deploy.sh"] 
