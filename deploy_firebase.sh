@@ -19,6 +19,24 @@ if [ ! -f "serviceAccountKey.json" ]; then
     exit 1
 fi
 
+# Executar o build do frontend
+echo -e "${YELLOW}=== Construindo o frontend antes do deploy ===${NC}"
+if [ -f "./build.sh" ]; then
+    echo "Executando o script build.sh..."
+    chmod +x ./build.sh
+    ./build.sh
+    
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Erro durante a construção do frontend. Abortando deploy.${NC}"
+        exit 1
+    fi
+    
+    echo -e "${GREEN}Build do frontend concluído com sucesso!${NC}"
+else
+    echo -e "${RED}Arquivo build.sh não encontrado. Verifique se o script existe na raiz do projeto.${NC}"
+    exit 1
+fi
+
 # Verificar se o token do Firebase está disponível
 # if [ -z "$FIREBASE_TOKEN" ]; then
 #     echo -e "${YELLOW}Token do Firebase não encontrado no ambiente.${NC}"
