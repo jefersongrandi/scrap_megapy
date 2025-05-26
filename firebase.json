@@ -1,0 +1,43 @@
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "megasena-api",
+      "runtime": "python310",
+      "region": "southamerica-east1",
+      "ignore": [
+        ".git",
+        "node_modules",
+        ".gitignore",
+        ".gcloudignore",
+        "public",
+        "*.pyc",
+        "__pycache__",
+        "env",
+        "venv"
+      ],
+      "predeploy": [
+        "echo 'Preparando para deploy...'"
+      ]
+    }
+  ],
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": "public",
+    "site": "mega-sena-40cff",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

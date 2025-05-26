@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Permitir acesso público para leitura de dados da Megasena
+    match /resultados_scraping/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Permitir acesso público para leitura de status
+    match /status/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Regra padrão: negar acesso para todos os documentos não especificados
+    match /{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+} 
