@@ -3,6 +3,7 @@ import sys
 import json
 import firebase_admin
 from firebase_functions import https_fn
+from firebase_functions import scheduler_fn
 from flask import jsonify, Request
 
 # Adicionar o diretório raiz ao path do Python para permitir importar módulos do src
@@ -46,6 +47,25 @@ try:
 except Exception as e:
     print(f"Erro ao inicializar Firebase: {str(e)}")
     firebase_available = False
+
+# Função programada para obter o último sorteio a cada 10 minutos nos horários específicos
+@scheduler_fn.on_schedule(schedule="*/10 5-6,20-21 * * *")
+def atualizar_ultimo_sorteio(event: scheduler_fn.ScheduledEvent) -> None:
+    """
+    Função programada para executar todos os dias das 05:00 às 07:00 e das 20:00 às 22:00 a cada 10 minutos.
+    Obtém apenas o último concurso da Mega-Sena e atualiza no Firebase.
+    """
+    try:
+        # Obter apenas o último sorteio (ultimos_n=1)
+        resultado = obter_ultimos_sorteios(1)
+        
+        # Registrar log de execução
+        print(f"Atualização do último sorteio executada com sucesso: {resultado}")
+        
+        return None
+    except Exception as e:
+        print(f"Erro ao atualizar último sorteio: {str(e)}")
+        return None
 
 # Função Firebase Functions
 @https_fn.on_request()
