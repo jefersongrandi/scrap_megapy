@@ -203,20 +203,26 @@ def obter_ultimos_sorteios(ultimos_n=10):
     # Calcular o número do primeiro concurso a analisar
     primeiro_concurso = max(1, numero_ultimo - ultimos_n + 1)
     
-    # Obter concursos já salvos no Firebase (para evitar duplicação)
+    # Obter concursos já salvos no Firestore (para evitar duplicação)
     concursos_existentes = {}
     if FirebaseService.is_available():
         try:
-            # Usar o limite maior para ter certeza de que pegamos todos os concursos relevantes
-            historico = FirebaseService.obter_historico_megasena(limite=ultimos_n*2)
+            # Buscar documentos que possuem o atributo metadados.concurso
+            from google.cloud.firestore_v1.base_query import FieldFilter
+            db = FirebaseService.get_instance().db
             
-            # Mapear concursos existentes
-            for item in historico:
-                if ('metadados' in item and 
-                    'concurso' in item.get('metadados', {}) and 
-                    item.get('metadados', {}).get('fonte') == 'api_caixa'):
-                    concurso_num = item['metadados']['concurso']
-                    concursos_existentes[concurso_num] = item['id']
+            # Para cada concurso no intervalo desejado, verificar se já existe
+            for num_concurso in range(primeiro_concurso, numero_ultimo + 1):
+                # Buscar por documentos onde metadados.concurso == num_concurso
+                query = db.collection('scraping_results').where(
+                    filter=FieldFilter('metadados.concurso', '==', num_concurso)
+                ).limit(1)
+                
+                docs = list(query.get())
+                if docs:
+                    # Se encontrou o documento, armazena o ID
+                    concursos_existentes[num_concurso] = docs[0].id
+                    print(f"Concurso {num_concurso} já existe no Firestore com ID {docs[0].id}")
         except Exception as e:
             print(f"Erro ao verificar concursos existentes: {str(e)}")
     
@@ -224,47 +230,96 @@ def obter_ultimos_sorteios(ultimos_n=10):
     ultimos_sorteios = []
     for num_concurso in range(primeiro_concurso, numero_ultimo + 1):
         try:
-            dados = megasena_api.obter_resultado_formatado(num_concurso)
-            
-            # Extrair apenas as informações relevantes
-            sorteio = {
-                'concurso': dados.get('concurso'),
-                'data_sorteio': dados.get('data_sorteio'),
-                'dezenas': dados.get('dezenas', []),
-                'premio_acumulado': dados.get('valor_acumulado_proximo_concurso', 0.0)
-            }
-            
-            ultimos_sorteios.append(sorteio)
-            
-            # Salvar no Firebase, se disponível
-            if FirebaseService.is_available():
+            if num_concurso in concursos_existentes:
+                # Se o concurso já existe, obter do Firestore
                 try:
-                    # Verificar se o concurso já existe
-                    if num_concurso not in concursos_existentes:
-                        doc_id = FirebaseService.salvar_resultado(
-                            url=f"ultimos_sorteios/megasena/{num_concurso}",
-                            conteudo=sorteio,
-                            metadados={
-                                'fonte': 'api_caixa', 
-                                'endpoint': '/megasena/ultimos_sorteios',
-                                'concurso': num_concurso
-                            }
-                        )
-                        print(f"Concurso {num_concurso} salvo com ID {doc_id}")
-                    else:
-                        print(f"Concurso {num_concurso} já existe no Firestore com ID {concursos_existentes[num_concurso]}")
+                    if FirebaseService.is_available():
+                        doc_ref = db.collection('scraping_results').document(concursos_existentes[num_concurso])
+                        doc = doc_ref.get()
+                        
+                        if doc.exists and 'conteudo' in doc.to_dict():
+                            print(f"Obtendo concurso {num_concurso} do Firestore")
+                            ultimos_sorteios.append(doc.to_dict()['conteudo'])
+                        else:
+                            print(f"Documento do concurso {num_concurso} existe, mas faltam dados. Obtendo da API...")
+                            obter_e_adicionar_concurso(megasena_api, num_concurso, ultimos_sorteios, salvar=False)
                 except Exception as e:
-                    print(f"Erro ao salvar sorteio no Firebase: {str(e)}")
+                    print(f"Erro ao obter concurso {num_concurso} do Firestore: {str(e)}")
+                    # Fallback para API
+                    obter_e_adicionar_concurso(megasena_api, num_concurso, ultimos_sorteios, salvar=False)
+            else:
+                # Se o concurso não existe, obter da API e salvar
+                obter_e_adicionar_concurso(megasena_api, num_concurso, ultimos_sorteios, salvar=True)
         except Exception as e:
-            print(f"Erro ao obter concurso {num_concurso}: {str(e)}")
-            continue
+            print(f"Erro ao processar concurso {num_concurso}: {str(e)}")
     
     # Ordenar por número do concurso (decrescente)
-    ultimos_sorteios.sort(key=lambda x: x['concurso'], reverse=True)
+    ultimos_sorteios.sort(key=lambda x: x.get('concurso', 0), reverse=True)
     
     return {
         'status': 'success',
         'total': len(ultimos_sorteios),
         'ultimos_n': ultimos_n,
         'sorteios': ultimos_sorteios
-    } 
+    }
+
+def obter_e_adicionar_concurso(megasena_api, num_concurso, ultimos_sorteios, salvar=False):
+    """
+    Função auxiliar para obter um concurso da API e opcionalmente salvá-lo.
+    
+    Args:
+        megasena_api: Instância da API da Megasena
+        num_concurso: Número do concurso a obter
+        ultimos_sorteios: Lista onde adicionar o sorteio
+        salvar: Se True, salva o resultado no Firestore
+    """
+    print(f"Obtendo concurso {num_concurso} da API...")
+    try:
+        dados = megasena_api.obter_resultado_formatado(num_concurso)
+        
+        # Extrair apenas as informações relevantes
+        sorteio = {
+            'concurso': dados.get('concurso'),
+            'data_sorteio': dados.get('data_sorteio'),
+            'dezenas': dados.get('dezenas', []),
+            'premio_acumulado': dados.get('valor_acumulado_proximo_concurso', 0.0)
+        }
+        
+        # Adicionar o sorteio à lista
+        ultimos_sorteios.append(sorteio)
+        
+        # Salvar no Firestore, se solicitado
+        if salvar and FirebaseService.is_available():
+            print(f"Verificando se o concurso {num_concurso} já existe antes de salvar...")
+            try:
+                from google.cloud.firestore_v1.base_query import FieldFilter
+                db = FirebaseService.get_instance().db
+                
+                # Verificar se o concurso já existe
+                query = db.collection('scraping_results').where(
+                    filter=FieldFilter('metadados.concurso', '==', num_concurso)
+                ).limit(1)
+                
+                docs = list(query.get())
+                if not docs:
+                    # Se não existe, salvar
+                    print(f"Concurso {num_concurso} não existe no Firestore. Salvando...")
+                    doc_id = FirebaseService.salvar_resultado(
+                        url=f"ultimos_sorteios/megasena/{num_concurso}",
+                        conteudo=sorteio,
+                        metadados={
+                            'fonte': 'api_caixa', 
+                            'endpoint': '/megasena/ultimos_sorteios',
+                            'concurso': num_concurso
+                        }
+                    )
+                    print(f"Concurso {num_concurso} salvo com ID {doc_id}")
+                else:
+                    print(f"Concurso {num_concurso} já existe no Firestore com ID {docs[0].id}, não será salvo novamente")
+            except Exception as e:
+                print(f"Erro ao verificar/salvar concurso {num_concurso} no Firestore: {str(e)}")
+    except Exception as e:
+        print(f"Erro ao obter concurso {num_concurso} da API: {str(e)}")
+        return None
+    
+    return sorteio 

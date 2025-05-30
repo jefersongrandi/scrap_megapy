@@ -171,6 +171,46 @@ class FirebaseService:
                         'opcoes': opcoes
                     }
                 
+                def _concurso_ja_existe(self, num_concurso):
+                    """
+                    Verifica se um concurso já existe no Firestore baseado no número do concurso.
+                    
+                    Args:
+                        num_concurso: Número do concurso a verificar
+                        
+                    Returns:
+                        bool: True se o concurso já existe, False caso contrário
+                    """
+                    try:
+                        from google.cloud.firestore_v1.base_query import FieldFilter
+                        
+                        collection_ref = self.db.collection('scraping_results')
+                        query = collection_ref.where(filter=FieldFilter('metadados.concurso', '==', num_concurso))
+                        
+                        # Verificar se existe pelo menos um documento
+                        docs = query.limit(1).get()
+                        return len(docs) > 0
+                        
+                    except Exception as e:
+                        print(f"Erro ao verificar se concurso {num_concurso} já existe: {str(e)}")
+                        # Em caso de erro, assumir que não existe para não bloquear a importação
+                        return False
+                
+                def _pular_concurso_existente(self, num_concurso):
+                    """
+                    Verifica se deve pular o concurso por já existir no banco.
+                    
+                    Args:
+                        num_concurso: Número do concurso
+                        
+                    Returns:
+                        bool: True se deve pular, False se deve processar
+                    """
+                    if self._concurso_ja_existe(num_concurso):
+                        print(f"Concurso {num_concurso} já existe no banco, pulando...")
+                        return True
+                    return False
+                
                 def importar_concursos_megasena(self, inicio, fim=None):
                     """
                     Importa concursos da Megasena a partir da API oficial e salva no Firestore.
@@ -213,6 +253,15 @@ class FirebaseService:
                         for num_concurso in range(inicio, fim + 1):
                             try:
                                 print(f"Importando concurso {num_concurso}...")
+                                
+                                # Verificar se o concurso já existe antes de processar
+                                if self._pular_concurso_existente(num_concurso):
+                                    concursos_importados.append({
+                                        'concurso': num_concurso,
+                                        'status': 'ja_existe',
+                                        'id': None
+                                    })
+                                    continue
                                 
                                 # Obter dados do concurso
                                 dados = megasena_api.obter_resultado_formatado(num_concurso)
@@ -425,6 +474,41 @@ class FirebaseService:
             raise ValueError("Firebase não está disponível")
         
         return firebase_scraper.obter_historico_megasena(limite)
+    
+    @staticmethod
+    def obter_concurso_por_id(documento_id):
+        """
+        Obtém um concurso específico pelo ID do documento no Firestore.
+        
+        Args:
+            documento_id: ID do documento no Firestore
+            
+        Returns:
+            Dicionário com os dados do concurso ou None se não encontrado
+        """
+        try:
+            # Obter a instância do Firebase
+            instance = FirebaseService.get_instance()
+            if not instance:
+                print("Firebase não está disponível")
+                return None
+                
+            # Obter o documento pelo ID
+            doc_ref = instance.db.collection('scraping_results').document(documento_id)
+            doc = doc_ref.get()
+            
+            if not doc.exists:
+                print(f"Documento com ID {documento_id} não encontrado")
+                return None
+                
+            # Converter para dicionário
+            resultado = doc.to_dict()
+            resultado['id'] = doc.id
+            
+            return resultado
+        except Exception as e:
+            print(f"Erro ao obter concurso por ID {documento_id}: {str(e)}")
+            return None
     
     @staticmethod
     def buscar_historico_concursos_ordenado(limite=10):
