@@ -21,6 +21,8 @@ from src.services.megasena_service import (
     obter_ultimos_sorteios
 )
 
+from src.megasena_api import MegasenaAPI
+
 # Importar o FirebaseService
 from src.services.firebase_service import FirebaseService
 
@@ -49,15 +51,17 @@ except Exception as e:
     firebase_available = False
 
 # Função programada para obter o último sorteio a cada 10 minutos nos horários específicos
-@scheduler_fn.on_schedule(schedule="*/10 5-6,20-21 * * *")
+@scheduler_fn.on_schedule(schedule="*/10 0,8,9,23 * * *")
 def atualizar_ultimo_sorteio(event: scheduler_fn.ScheduledEvent) -> None:
     """
     Função programada para executar todos os dias das 05:00 às 07:00 e das 20:00 às 22:00 a cada 10 minutos.
     Obtém apenas o último concurso da Mega-Sena e atualiza no Firebase.
     """
     try:
+        megasena_api = MegasenaAPI()
+        
         # Obter apenas o último sorteio (ultimos_n=1)
-        resultado = obter_ultimos_sorteios(1)
+        resultado = megasena_api._obter_concurso_da_api()
         
         # Registrar log de execução
         print(f"Atualização do último sorteio executada com sucesso: {resultado}")
