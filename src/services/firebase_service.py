@@ -368,6 +368,23 @@ class FirebaseService:
         return FirebaseService.get_instance() is not None
     
     @staticmethod
+    def concurso_ja_existe(numero_concurso):
+        """
+        Verifica se um concurso já existe no Firestore.
+        
+        Args:
+            numero_concurso: Número do concurso a verificar
+            
+        Returns:
+            bool: True se o concurso já existe, False caso contrário
+        """
+        firebase_instance = FirebaseService.get_instance()
+        if firebase_instance is None:
+            return False
+            
+        return firebase_instance._concurso_ja_existe(numero_concurso)
+    
+    @staticmethod
     def _sanitize_data_for_firestore(data):
         """
         Sanitiza os dados para que possam ser armazenados no Firestore,
