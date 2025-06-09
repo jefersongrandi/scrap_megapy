@@ -60,6 +60,22 @@ class MegasenaAPI:
             print(f"Erro ao buscar concurso no Firestore: {str(e)}")
             
         return None
+    
+    def _deve_salvar_concurso(self, numero_concurso: Optional[int]) -> bool:
+        """
+        Verifica se o concurso deve ser salvo no Firebase.
+        Retorna False se o concurso já existe, True caso contrário.
+        
+        Args:
+            numero_concurso: Número do concurso a verificar
+            
+        Returns:
+            bool: True se deve salvar, False se já existe
+        """
+        if numero_concurso is None:
+            return True
+            
+        return not FirebaseService.concurso_ja_existe(numero_concurso)
         
     def _buscar_concurso_por_numero(self, numero_concurso: int) -> Optional[Dict[str, Any]]:
         """
@@ -140,20 +156,24 @@ class MegasenaAPI:
             
             dados = response.json()
             
-            # Salvar no Firestore se disponível
+            # Salvar no Firestore se disponível e se o concurso ainda não existe
             if FirebaseService.is_available():
                 try:
-                    conteudo_formatado = self.formatar_resultado(dados)
-                    FirebaseService.salvar_resultado(
-                        url=f"megasena/concursos/{numero_concurso if numero_concurso else 'ultimo'}",
-                        conteudo=conteudo_formatado,
-                        metadados={
-                            'fonte': 'api_caixa',
-                            'concurso': dados.get('numero'),
-                            'data_obtencao': datetime.now().isoformat()
-                        }
-                    )
-                    print(f"Concurso {dados.get('numero')} salvo no Firestore")
+                    numero_do_concurso = dados.get('numero')
+                    if self._deve_salvar_concurso(numero_do_concurso):
+                        conteudo_formatado = self.formatar_resultado(dados)
+                        FirebaseService.salvar_resultado(
+                            url=f"megasena/concursos/{numero_concurso if numero_concurso else 'ultimo'}",
+                            conteudo=conteudo_formatado,
+                            metadados={
+                                'fonte': 'api_caixa',
+                                'concurso': numero_do_concurso,
+                                'data_obtencao': datetime.now().isoformat()
+                            }
+                        )
+                        print(f"Concurso {numero_do_concurso} salvo no Firestore")
+                    else:
+                        print(f"Concurso {numero_do_concurso} já existe no Firestore, não salvando novamente")
                 except Exception as e:
                     print(f"Erro ao salvar concurso no Firestore: {str(e)}")
             
